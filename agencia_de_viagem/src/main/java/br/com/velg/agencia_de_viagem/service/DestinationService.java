@@ -6,19 +6,21 @@ import br.com.velg.agencia_de_viagem.repository.DestinationRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Optional;
 
 @Service
 public class DestinationService {
 
-    private DestinationRepository destinationRepository;
+    private final DestinationRepository destinationRepository;
 
-    DestinationService() {
+    DestinationService(DestinationRepository destinationRepository) {
         this.destinationRepository = destinationRepository;
     }
 
     public DestinationDTO insert(DestinationDTO destinationDTO) {
         Destination destination = new Destination();
-        copyDtoToEntity(destinationDTO, destination);
+        copyDtoToEntityDestination(destinationDTO, destination);
         destination = destinationRepository.save(destination);
         return new DestinationDTO(destination);
     }
@@ -31,42 +33,61 @@ public class DestinationService {
 
 
     public List<DestinationDTO> searchByNameOrLocation(String nameDestination, String location) throws Exception {
-        if (!nameDestination.isBlank() && !location.isBlank()) {
-            throw new Exception("É necessário informar um nome OU uma localização");
-        } else if (nameDestination.isBlank()) {
+        if (nameDestination != null && location != null) {
+            throw new Exception("É necessário informar apenas um nome OU uma localização");
+        } else if (nameDestination == null) {
             return destinationRepository.findByLocationContainingIgnoreCase(location).stream()
                     .map(locations ->
                             new DestinationDTO(locations)).toList();
-        } else if (location.isBlank()) {
+        } else if (location == null) {
             return destinationRepository.findByNameDestinationContainingIgnoreCase(nameDestination).stream()
                     .map(name ->
                             new DestinationDTO(name)).toList();
         } else {
-            throw new Exception("É necessário informar um nome ou localização");
+            throw new Exception("É necessário informar ao mesno um nome OU uma localização");
         }
     }
 
-//
-//    public Optional<Destino> buscarPorId(Long id) {
-//        return destinationRepository.findById(id);
-//    }
-//
-//    public void excluir(Long id) {
-//        destinationRepository.deleteById(id);
-//    }
-//
-//    public Destino avaliar(Long id, int nota) {
-//        Destino destino = destinationRepository.findById(id).orElseThrow(() -> new RuntimeException("Destino não encontrado"));
-//        double novaMedia = ((destino.getAvaliacaoMedia() * destino.getNumeroAvaliacoes()) + nota) / (destino.getNumeroAvaliacoes() + 1);
-//        destino.setAvaliacaoMedia(novaMedia);
-//        destino.setNumeroAvaliacoes(destino.getNumeroAvaliacoes() + 1);
-//        return destinationRepository.save(destino);
-//    }
+    public DestinationDTO findById(Long id) {
+       Destination destination = destinationRepository.findById(id).
+               orElseThrow(() -> new NoSuchElementException("Destino não encontrado"));
+       return new DestinationDTO(destination);
+    }
 
-    private void copyDtoToEntity(DestinationDTO destinationDTO, Destination destination) {
+    public void delete(Long id) {
+        destinationRepository.deleteById(id);
+    }
+
+    public DestinationDTO check(Long id, float evaluation) {
+        delimiterMaxEvaluation(evaluation);
+        Destination destination = destinationRepository.findById(id).orElseThrow(() -> new NoSuchElementException("Destino não encontrado"));
+
+        float newAverage = ((evaluation + destination.getEvaluation()) / countEvaluationByuser(id));
+        newAverage = (float) (Math.round(newAverage * Math.pow(10, 2)) / Math.pow(10, 2));
+        destination.setEvaluation(newAverage);
+        destinationRepository.save(destination);
+        return new DestinationDTO(destination);
+    }
+
+    private void copyDtoToEntityDestination(DestinationDTO destinationDTO, Destination destination) {
         destination.setNameDestination(destinationDTO.getNameDestination());
         destination.setCountry(destinationDTO.getCountry());
         destination.setState(destinationDTO.getState());
         destination.setLocation(destinationDTO.getLocation());
+        destination.setEvaluation(delimiterMaxEvaluation(destinationDTO.getEvaluation()));
+        destination.setCountEvaluation(1);
+    }
+
+    private float delimiterMaxEvaluation(float evaluation) {
+        if (evaluation < 1.0f || evaluation > 10.0f) {
+           throw new IllegalArgumentException("A avaliação mínima é 1.0 e máxima é 10.0");
+        }
+        return evaluation;
+    }
+
+    private int countEvaluationByuser(Long id) {
+        Optional<Destination> destination = destinationRepository.findById(id);
+        destination.get().setCountEvaluation(destination.get().getCountEvaluation() + 1);
+        return destination.get().getCountEvaluation();
     }
 }
