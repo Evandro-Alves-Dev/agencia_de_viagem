@@ -3,21 +3,21 @@ package br.com.velg.agencia_de_viagem.entities;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
+
 import jakarta.persistence.Id;
-import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+
 import java.io.Serializable;
-import java.util.Set;
 
 @Data
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "tb_destino")
+@Table(name = "tb_destination")
 public class Destination implements Serializable {
 
     @Id
@@ -27,4 +27,7 @@ public class Destination implements Serializable {
     private String state;
     private String nameDestination;
     private String location;
+    private float evaluation = 0.0f;
+    private int countEvaluation;
+
 }
